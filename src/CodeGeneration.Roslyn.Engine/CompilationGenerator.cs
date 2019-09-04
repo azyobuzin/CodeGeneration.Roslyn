@@ -238,15 +238,28 @@ namespace CodeGeneration.Roslyn.Engine
             var assemblyPaths = new List<string>();
             this.assemblyResolver.TryResolveAssemblyPaths(wrapper, assemblyPaths);
 
-            if (assemblyPaths.Count == 0)
+            foreach (var assemblyPath in assemblyPaths)
             {
-                var matches = from refAssemblyPath in this.ReferencePath
-                              where Path.GetFileNameWithoutExtension(refAssemblyPath).Equals(name.Name, StringComparison.OrdinalIgnoreCase)
-                              select context.LoadFromAssemblyPath(refAssemblyPath);
-                return matches.FirstOrDefault();
+                AssemblyName nameOfTheFile;
+                try
+                {
+                    nameOfTheFile = AssemblyName.GetAssemblyName(assemblyPath);
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (string.Equals(nameOfTheFile.Name, name.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return context.LoadFromAssemblyPath(assemblyPath);
+                }
             }
 
-            return assemblyPaths.Select(context.LoadFromAssemblyPath).FirstOrDefault();
+            var matches = from refAssemblyPath in this.ReferencePath
+                          where Path.GetFileNameWithoutExtension(refAssemblyPath).Equals(name.Name, StringComparison.OrdinalIgnoreCase)
+                          select context.LoadFromAssemblyPath(refAssemblyPath);
+            return matches.FirstOrDefault();
         }
 
         private static RuntimeLibrary FindMatchingLibrary(IEnumerable<RuntimeLibrary> libraries, AssemblyName name)
